@@ -31,7 +31,7 @@ async def target_rebalance(side, symbol):
     trades = []
     shortable = (trading_client.get_asset(symbol_or_asset_id=symbol)).shortable
     positions = trading_client.get_all_positions()
-    pos = {i.symbol: i for i in positions}
+    pos = {i.symbol: i for i in positions} 
     
     if symbol in pos:
         position = pos[symbol]
@@ -125,5 +125,5 @@ if __name__ == "__main__":
     first_time = True
     while True:
         if datetime.datetime.now().minute in [00, 15, 30, 45] or first_time:
+
             asyncio.run(main())
-            first_time = False

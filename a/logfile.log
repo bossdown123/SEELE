@@ -1,0 +1,40 @@
+import asyncio
+import websockets
+import json
+
+# Alpaca WebSocket URL for the test environment
+WEBSOCKET_URL = 'wss://stream.data.alpaca.markets/v2/test'
+
+# Your Alpaca API credentials
+API_KEY_ID = 'your_api_key_id'
+API_SECRET_KEY = 'your_api_secret_key'
+
+async def alpaca_websocket():
+    # Connect to the WebSocket
+    async with websockets.connect(WEBSOCKET_URL) as websocket:
+        # Authentication message
+        auth_message = json.dumps({
+            "action": "auth",
+            "key": API_KEY_ID,
+            "secret": API_SECRET_KEY
+        })
+        await websocket.send(auth_message)
+
+        # Waiting for authentication confirmation
+        response = await websocket.recv()
+        print(f"Auth Response: {response}")
+
+        # Subscribe to the trades updates for the FAKEPACA symbol
+        subscribe_message = json.dumps({
+            "action": "subscribe",
+            "trades": ["FAKEPACA"]
+        })
+        await websocket.send(subscribe_message)
+
+        # Print messages received from the server
+        while True:
+            message = await websocket.recv()
+            print(f"Received: {message}")
+
+# Run the WebSocket connection
+asyncio.get_event_loop().run_until_complete(alpaca_websocket())
