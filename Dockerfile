@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 RUN pip install --no-cache-dir --upgrade pip
 
-RUN pip install ably alpaca-py tensorflow==2.15.0 pandas asyncio scikit-learn numpy
+RUN pip install ably alpaca-py tensorflow==2.15.0 pandas asyncio scikit-learn numpy simfin
 
 # Set environment variables
 ENV ALPACA_KEY="PKODZGQ3BIWGQJ6A3HJ4" \

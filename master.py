@@ -50,19 +50,26 @@ async def main():
     await channel.attach()
     await heartbeat.attach()
     await assignment.attach()
+    new_active_members = {}
 
     assignments={}
     #asyncio.create_task(handle_dead())
 
     while True:
         await asyncio.sleep(1)
-        print(str(active_members).replace(",",'\n'))
-        print("--------------------")
+
         stocks=['AAPL','GOOGL','AMZN','MSFT','TSLA','META','NVDA','PYPL','INTC','ADBE']
         n=len(active_members)
+        if active_members != new_active_members:
+            new_active_members=active_members
+            if n==0:
+                print('No active members')
+                continue
+            print(str(active_members).replace(",",'\n'))
+            print("--------------------")
         if n==0:
-            print('No active members')
             continue
+            
         chunk_size = (len(stocks) + n - 1) // n  # This computes the ceiling of len(stocks) / n
         chunks = [stocks[i:i + chunk_size] for i in range(0, len(stocks), chunk_size)]
         new_assignments=dict(zip(active_members.keys(),chunks))
@@ -71,4 +78,5 @@ async def main():
             assignments=new_assignments
             print(str(assignments))
             await assignment.publish('assignment', json.dumps(assignments))
+
 asyncio.run(main())

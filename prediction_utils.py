@@ -29,7 +29,7 @@ async def preprocess_bars(multi_scaler,bars):
         df=df.loc[:,['open','high','low','close']].diff().rolling(3).mean().dropna().tail(26)
         arr=multi_scaler.transform(df).values
         arrs.append(arr)
-    return np.hstack(arrs)#.reshape(-1,26,4)
+    return np.vstack(arrs).reshape(-1,26,4)
 
 async def predict(model,x):
     return model.predict(x,batch_size=1000).argmax(1)

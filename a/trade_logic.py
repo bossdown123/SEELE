@@ -67,7 +67,7 @@ def execute(trades):
         print('Not open')
     else:     
         for trade in trades:
-            print(trade)
+            print("TO EXCHANGE\n"+str(trade))
             submit_and_check_order(trade)
     
 def submit_and_check_order(trade):
