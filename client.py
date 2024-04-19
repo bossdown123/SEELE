@@ -34,7 +34,7 @@ model = load_model("model.keras")
 
 async def publish_heartbeat(channel, sys_id=sys_id):
     while True:
-        await asyncio.sleep(2)
+        await asyncio.sleep(5)
         await channel.publish(
             name="alive",
             data=json.dumps({sys_id: {"timestamp": datetime.now(timezone.utc).timestamp()}}),)

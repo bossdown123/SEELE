@@ -21,7 +21,7 @@ async def heartbeat_listener(message):
         active_members.update(heartbeat)
         
         # Remove dead members
-        to_remove = [id for id, data in active_members.items() if current_time - data['timestamp'] > 6]
+        to_remove = [id for id, data in active_members.items() if current_time - data['timestamp'] > 30]
 
         for id in to_remove:
             del active_members[id]
