@@ -58,7 +58,7 @@ async def trade_task():
     while True:
         await asyncio.sleep(1)
         dt = datetime.now(timezone.utc)
-        if assignments and dt.minute % 15 == 0:
+        if assignments and dt.minute % 15 == 0 and dt.second < 2:
             trades = await trade_exec()
             print("Trades:", trades)
             await trade_alert.publish(name="trades", data=json.dumps({sys_id: str(trades)}))
