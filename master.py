@@ -21,7 +21,7 @@ async def heartbeat_listener(message):
         active_members.update(heartbeat)
         
         # Remove dead members
-        to_remove = [id for id, data in active_members.items() if current_time - data['timestamp'] > 60*5]
+        to_remove = [id for id, data in active_members.items() if current_time - data['timestamp'] > 6]
 
         for id in to_remove:
             del active_members[id]
@@ -31,7 +31,8 @@ async def main():
 
     # Create a client using an Abl1y API key
     client = AblyRealtime('rFzlEA.aAHNZw:3ybEePEcrI20nqAWmSyvQdjANv2XWGiOMfW05c4T_kw')
-    
+    client.realtime_request_timeout = 2000000000
+
     # Subscribe to connection state changes
     client.connection.on('connected', lambda state_change: print('Connected to Ably'))
     client.connection.on('failed', lambda state_change: print('Connection to Ably failed'))

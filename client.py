@@ -17,6 +17,7 @@ from prediction_utils import *
 from order_logic import *
 global assignments
 assignments = []
+from concurrent.futures import ThreadPoolExecutor
 
 with open("multi_scaler.pickle", "rb") as f:
     multi_scaler = pkl.load(f)
@@ -24,12 +25,12 @@ model = load_model("model.keras")
 
 async def publish_heartbeat(channel, sys_id=sys_id):
     while True:
-        await asyncio.sleep(5)
+        await asyncio.sleep(2)
         await channel.publish(
             name="alive",
             data=json.dumps({sys_id: {"timestamp": datetime.now(timezone.utc).timestamp()}}),)
-
-
+        print("Published heartbeat")
+            
 async def assignment_listener(message, sys_id=sys_id):
     global assignments
     data = json.loads(message.data)
@@ -45,7 +46,8 @@ async def trade_exec(model=model, multi_scaler=multi_scaler):
         for stock, target in zip(assignments, prediction):
             execute(target_rebalance(PositionSide.LONG if target == 1 else PositionSide.SHORT, stock))
         return dict(zip(assignments, prediction))
-
+    else:
+        print ("No assignments")
 # await trade_alert.publish(name='trades', data=json.dumps({sys_id:targets}))
 async def command_listener(message, sys_id=sys_id):
     print("Received command:", message.data)
@@ -62,6 +64,7 @@ async def trade_task():
             trades = await trade_exec()
             print("Trades:", trades)
             await trade_alert.publish(name="trades", data=json.dumps({sys_id: str(trades)}))
+            print('DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE ')
 
 
 async def main():
@@ -87,10 +90,16 @@ async def main():
     await command.attach()
     await heartbeat.attach()
     await assignment.attach()
+    
+    heartbeat_task_executor = ThreadPoolExecutor(max_workers=1)
+    loop = asyncio.get_running_loop()
+    loop.run_in_executor(heartbeat_task_executor, lambda: asyncio.run(publish_heartbeat(heartbeat, sys_id)))
+    #asyncio.create_task(publish_heartbeat(heartbeat, sys_id))
 
-    asyncio.create_task(publish_heartbeat(heartbeat, sys_id))
+    trade_task_executor = ThreadPoolExecutor(max_workers=1)
+    loop = asyncio.get_running_loop()
+    loop.run_in_executor(trade_task_executor, lambda: asyncio.run(trade_task()))
 
-    asyncio.create_task(trade_task())
 
     while True:
         await asyncio.sleep(1)
