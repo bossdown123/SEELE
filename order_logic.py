@@ -8,8 +8,8 @@ from alpaca.data.enums import Adjustment
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import OrderRequest,MarketOrderRequest 
 from alpaca.trading.enums import OrderSide, TimeInForce, OrderType,PositionSide,OrderStatus
-trading_client = TradingClient('PKODZGQ3BIWGQJ6A3HJ4', 'WRCojP9T9ZnV2KZeru9GRbXb41zu7bj2GjRC17XJ', paper=True)
-client = StockHistoricalDataClient('PKODZGQ3BIWGQJ6A3HJ4', 'WRCojP9T9ZnV2KZeru9GRbXb41zu7bj2GjRC17XJ')
+trading_client = TradingClient('PKVL24J3O7MEAJKC5WIO', 'eKXDYtCs1HlGOfu6z3mL2GrpNpaL5oreVMzcfmwH', paper=True)
+client = StockHistoricalDataClient('PKVL24J3O7MEAJKC5WIO', 'eKXDYtCs1HlGOfu6z3mL2GrpNpaL5oreVMzcfmwH')
 import numpy as np
 
 
