@@ -47,7 +47,7 @@ def target_rebalance(side, symbol):
         price = client.get_stock_latest_quote(StockLatestQuoteRequest(symbol_or_symbols=symbol,feed='sip'))[symbol].ask_price
         trade = MarketOrderRequest(
                     symbol=symbol,
-                    qty = int(1200/price),
+                    qty = int(700/price),
                     time_in_force=TimeInForce.DAY,
                     side=OrderSide.BUY if side == PositionSide.LONG else OrderSide.SELL
                 )

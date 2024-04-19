@@ -35,10 +35,11 @@ async def assignment_listener(message, sys_id=sys_id):
     global assignments
     data = json.loads(message.data)
     assignments = data[sys_id]
-    print("Received assignments:", assignments)
+    print("Received assignments:", len(assignments))
 
 async def trade_exec(model=model, multi_scaler=multi_scaler):
     print("Executing trades")
+    print("Assignments:", len(assignments))
     if assignments:
         bars = await get_bars(assignments, datetime.now(timezone.utc))
         arr = await preprocess_bars(multi_scaler, bars)
