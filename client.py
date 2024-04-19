@@ -53,7 +53,7 @@ async def command_listener(message, sys_id=sys_id):
     if data["scope"] == "ALL" and data["command"] == "trade":
         trades = await trade_exec()
         await trade_alert.publish(name="trades", data=json.dumps({sys_id: str(trades)}))
-
+        print('DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE ')
 async def trade_task():
     while True:
         await asyncio.sleep(1)
@@ -68,10 +68,11 @@ async def main():
     # Create a client using an Abl1y API key
 
     client = AblyRealtime("rFzlEA.aAHNZw:3ybEePEcrI20nqAWmSyvQdjANv2XWGiOMfW05c4T_kw")
-
+    client.realtime_request_timeout = 2000000000
     # Subscribe to connection state changes
     client.connection.on("connected", lambda state_change: print("Connected to Ably"))
     client.connection.on("failed", lambda state_change: print("Connection to Ably failed"))
+    client.connection.on("disconnected", lambda state_change: print("Disconnected from Ably"))
     # Get a realtime channel instance
     command = client.channels.get("command")
     heartbeat = client.channels.get("heartbeat")
