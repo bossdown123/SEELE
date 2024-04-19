@@ -18,6 +18,15 @@ from order_logic import *
 global assignments
 assignments = []
 from concurrent.futures import ThreadPoolExecutor
+def rd(dt):
+    # Extract minutes and find how many minutes to subtract to round down to the nearest 15
+    minute = dt.minute
+    minute_to_subtract = minute % 15
+    
+    # Subtract the extra minutes from the datetime object
+    rounded_dt = dt - timedelta(minutes=minute_to_subtract)
+    
+    return rounded_dt
 
 with open("multi_scaler.pickle", "rb") as f:
     multi_scaler = pkl.load(f)
@@ -42,7 +51,7 @@ async def trade_exec(model=model, multi_scaler=multi_scaler):
     if assignments:
         print("Assignments:", len(assignments))
         
-        bars = await get_bars(assignments, datetime.now(timezone.utc))
+        bars = await get_bars(assignments, rd(datetime.now(timezone.utc)))
         print("Got bars")
         arr = await preprocess_bars(multi_scaler, bars)
         print("Preprocessed bars")
