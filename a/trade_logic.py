@@ -62,7 +62,7 @@ def target_rebalance(side, symbol):
             
     else:
         return []
-def execute(trades):
+def executeA(trades):
     if trading_client.get_clock().is_open == False:
         print('Not open')
     else:     
@@ -70,7 +70,7 @@ def execute(trades):
             print("TO EXCHANGE\n"+str(trade))
             submit_and_check_order(trade)
     
-def submit_and_check_order(trade):
+def submit_and_check_orderA(trade):
     symbol = trade.symbol
     activetrade = trading_client.submit_order(trade)
     status = activetrade.status
@@ -89,3 +89,37 @@ def submit_and_check_order(trade):
             trading_client.cancel_order_by_id(activetrade.id)
             break
         print(f"{trade} \n SUCCESS")
+        
+        
+import asyncio 
+        
+async def execute(trades, trading_client):
+    clock = trading_client.get_clock()
+    if not clock.is_open:
+        print('Market is not open.')
+    else:
+        tasks = [submit_and_check_order(trade, trading_client) for trade in trades]
+        results = await asyncio.gather(*tasks)
+        for result in results:
+            print("Order Result:", result)
+
+async def submit_and_check_order(trade, trading_client):
+    symbol = trade.symbol
+    activetrade = trading_client.submit_order(trade)
+    status = activetrade['status']
+    checks = 0
+
+    while status != 'FILLED':  # Assuming 'FILLED' is the status you check for
+        order = trading_client.get_order_by_id(activetrade['id'])
+        status = order['status']
+        checks += 1
+        await asyncio.sleep(1)  # Non-blocking sleep
+        print(checks)
+
+        if checks == 15:
+            print('failed', symbol)
+            trading_client.cancel_order_by_id(activetrade['id'])
+            return 
+        if status == 'FILLED':
+            print(f"Order for {symbol} SUCCESS")
+            return 

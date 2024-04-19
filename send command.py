@@ -14,8 +14,6 @@ async def main():
     # Get a reference to the command channel
     command = client.channels.get('command')
     
-    # Attach to the channel
-    await command.attach()
     
     # Publish a command to the channel
     await command.publish('trade', json.dumps({

@@ -61,15 +61,15 @@ def target_rebalance(side, symbol):
             
     else:
         return []
-def execute(trades):
+def executeA(trades):
     if trading_client.get_clock().is_open == False:
         print('Not open')
     else:     
         for trade in trades:
             print(trade)
-            submit_and_check_order(trade)
+            submit_and_check_orderA(trade)
     
-def submit_and_check_order(trade):
+def submit_and_check_orderA(trade):
     symbol = trade.symbol
     activetrade = trading_client.submit_order(trade)
     status = activetrade.status
@@ -88,3 +88,38 @@ def submit_and_check_order(trade):
             trading_client.cancel_order_by_id(activetrade.id)
             break
         print(f"{trade} \n SUCCESS")
+
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+import time
+
+executor = ThreadPoolExecutor()
+
+def submit_and_check_order(trade):
+    symbol = trade['symbol']
+    activetrade = trading_client.submit_order(trade)
+    status = activetrade.status
+    checks = 0
+    while status != 'FILLED':
+        order = trading_client.get_order_by_id(activetrade.id)
+        status = order.status
+        checks += 1
+        time.sleep(1)  # blocking sleep replaced with asyncio.sleep in the async version
+        if checks == 15:
+            print('failed', symbol)
+            trading_client.cancel_order_by_id(activetrade.id)
+            break
+        print(f"{trade} \n SUCCESS")
+
+async def execute(trades):
+    if not trading_client.get_clock().is_open:
+        print('Not open')
+    else:
+        # Execute the blocking functions in a thread pool
+        loop = asyncio.get_running_loop()
+        tasks = [
+            loop.run_in_executor(executor, submit_and_check_order, trade)
+            for trade in trades
+        ]
+        # Wait for all tasks to complete
+        await asyncio.gather(*tasks)
