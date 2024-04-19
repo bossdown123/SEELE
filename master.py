@@ -21,7 +21,7 @@ async def heartbeat_listener(message):
         active_members.update(heartbeat)
         
         # Remove dead members
-        to_remove = [id for id, data in active_members.items() if current_time - data['timestamp'] > 10]
+        to_remove = [id for id, data in active_members.items() if current_time - data['timestamp'] > 60*5]
 
         for id in to_remove:
             del active_members[id]
@@ -75,7 +75,7 @@ async def main():
         #sorted_assignments = {key: new_assignments[key] for key in sorted(new_assignments)}
         if assignments != new_assignments:
             assignments=new_assignments
-            print(str(assignments))
+            print(str(len(assignments)))
             await assignment.publish('assignment', json.dumps(assignments))
 
 asyncio.run(main())
