@@ -39,12 +39,17 @@ async def assignment_listener(message, sys_id=sys_id):
 
 async def trade_exec(model=model, multi_scaler=multi_scaler):
     print("Executing trades")
-    print("Assignments:", len(assignments))
     if assignments:
+        print("Assignments:", len(assignments))
+        
         bars = await get_bars(assignments, datetime.now(timezone.utc))
+        print("Got bars")
         arr = await preprocess_bars(multi_scaler, bars)
+        print("Preprocessed bars")
         prediction = await predict(model, arr)  # targets=dict(zip(assignments,prediction))
+        print("Predicted")
         for stock, target in zip(assignments, prediction):
+            print(stock,target)
             execute(target_rebalance(PositionSide.LONG if target == 1 else PositionSide.SHORT, stock))
         return dict(zip(assignments, prediction))
     else:

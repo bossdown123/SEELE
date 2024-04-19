@@ -45,9 +45,10 @@ def target_rebalance(side, symbol):
     elif symbol not in list(pos.keys()):
         print(f'{symbol}: Not Found opening position at 5k')
         price = client.get_stock_latest_quote(StockLatestQuoteRequest(symbol_or_symbols=symbol,feed='sip'))[symbol].ask_price
+        
         trade = MarketOrderRequest(
                     symbol=symbol,
-                    qty = int(700/price),
+                    qty = int(700//price) if int(700//price)!=0 else 1,
                     time_in_force=TimeInForce.DAY,
                     side=OrderSide.BUY if side == PositionSide.LONG else OrderSide.SELL
                 )
@@ -71,7 +72,11 @@ def execute(trades):
     
 def submit_and_check_order(trade):
     symbol = trade.symbol
-    activetrade = trading_client.submit_order(trade)
+    try:
+        activetrade = trading_client.submit_order(trade)
+    except Exception as e:
+        print('failed',symbol,"reason:",e)
+        return
     status = activetrade.status
     checks=0
     while status != OrderStatus.FILLED:
