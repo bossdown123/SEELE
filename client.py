@@ -43,7 +43,7 @@ async def trade_exec(model=model, multi_scaler=multi_scaler):
         arr = await preprocess_bars(multi_scaler, bars)
         prediction = await predict(model, arr)  # targets=dict(zip(assignments,prediction))
         for stock, target in zip(assignments, prediction):
-            await execute(target_rebalance(PositionSide.LONG if target == 1 else PositionSide.SHORT, stock))
+            execute(target_rebalance(PositionSide.LONG if target == 1 else PositionSide.SHORT, stock))
         return dict(zip(assignments, prediction))
 
 # await trade_alert.publish(name='trades', data=json.dumps({sys_id:targets}))
