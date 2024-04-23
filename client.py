@@ -4,8 +4,9 @@ import pickle as pkl
 from datetime import *
 import os
 import sys
-
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress most warnings
+import numpy as np
+from tensorflow.keras.models import load_model
 import tensorflow as tf
 
 import asyncio
@@ -34,7 +35,7 @@ model = load_model("model.keras")
 
 async def publish_heartbeat(channel, sys_id=sys_id):
     while True:
-        await asyncio.sleep(10)
+        await asyncio.sleep(2)
         await channel.publish(
             name="alive",
             data=json.dumps({sys_id: {"timestamp": datetime.now(timezone.utc).timestamp()}}),)
@@ -45,22 +46,33 @@ async def assignment_listener(message, sys_id=sys_id):
     data = json.loads(message.data)
     assignments = data[sys_id]
     print("Received assignments:", len(assignments))
+from concurrent.futures import ThreadPoolExecutor,ProcessPoolExecutor
 
 async def trade_exec(model=model, multi_scaler=multi_scaler):
     print("Executing trades")
     if assignments:
         print("Assignments:", len(assignments))
-        
-        bars = await get_bars(assignments, rd(datetime.now(timezone.utc)))
-        print("Got bars")
-        arr = await preprocess_bars(multi_scaler, bars)
-        print("Preprocessed bars")
-        prediction = await predict(model, arr)  # targets=dict(zip(assignments,prediction))
-        print("Predicted")
-        for stock, target in zip(assignments, prediction):
-            print(stock,target)
-            execute(target_rebalance(PositionSide.LONG if target == 1 else PositionSide.SHORT, stock))
-        return dict(zip(assignments, prediction))
+        dt=datetime.now(timezone.utc)
+        if dt.hour < 13 or dt.hour > 20:
+            print("Not trading hours")
+            return
+        bars=await get_bars(assignments,rd(dt))
+        arr=await preprocess_bars(multi_scaler,bars,assignments)
+        prediction=await predict(model,arr)
+        targets=dict(zip(assignments,prediction))
+        try:
+            with ProcessPoolExecutor(max_workers=16) as executor:
+                tasks = [executor.submit(target_rebalance, PositionSide.LONG if pred == 0 else PositionSide.SHORT, symbol,{i.symbol:i for i in trading_client.get_all_positions()})
+                    for symbol, pred in targets.items()]
+                trades = [task.result() for task in tasks]
+        except Exception as e:
+            print(e)
+        print(targets)
+
+        with ProcessPoolExecutor(max_workers=16) as executor:
+            tasks = [executor.submit(execute, trade) for trade in trades]
+            orders = [task.result() for task in tasks]
+        return targets
     else:
         print ("No assignments")
 # await trade_alert.publish(name='trades', data=json.dumps({sys_id:targets}))
@@ -76,6 +88,7 @@ async def trade_task():
         await asyncio.sleep(1)
         dt = datetime.now(timezone.utc)
         if assignments and dt.minute % 15 == 0 and dt.second < 2:
+            await asyncio.sleep(2)
             trades = await trade_exec()
             print("Trades:", trades)
             await trade_alert.publish(name="trades", data=json.dumps({sys_id: str(trades)}))
@@ -111,11 +124,11 @@ async def main():
     loop.run_in_executor(heartbeat_task_executor, lambda: asyncio.run(publish_heartbeat(heartbeat, sys_id)))
     #asyncio.create_task(publish_heartbeat(heartbeat, sys_id))
 
-    trade_task_executor = ThreadPoolExecutor(max_workers=1)
-    loop = asyncio.get_running_loop()
-    loop.run_in_executor(trade_task_executor, lambda: asyncio.run(trade_task()))
-
-
+    #trade_task_executor = ProcessPoolExecutor(max_workers=1)
+    #loop = asyncio.get_running_loop()
+    #loop.run_in_executor(trade_task_executor, lambda: asyncio.run(trade_task()))
+    asyncio.run(await trade_task())
+    
     while True:
         await asyncio.sleep(1)
 
