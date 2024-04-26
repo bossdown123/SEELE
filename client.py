@@ -6,8 +6,9 @@ import os
 import sys
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress most warnings
 import numpy as np
-from tensorflow.keras.models import load_model
 import tensorflow as tf
+import keras
+from keras.models import load_model
 
 import asyncio
 from ably import AblyRealtime
@@ -20,18 +21,25 @@ global assignments
 assignments = []
 from concurrent.futures import ThreadPoolExecutor
 def rd(dt):
-    # Extract minutes and find how many minutes to subtract to round down to the nearest 15
+    # Extract minutes, seconds, and microseconds
     minute = dt.minute
+    seconds = dt.second
+    microseconds = dt.microsecond
+    
+    # Find how many minutes to subtract to round down to the nearest 15-minute interval
     minute_to_subtract = minute % 15
     
-    # Subtract the extra minutes from the datetime object
-    rounded_dt = dt - timedelta(minutes=minute_to_subtract)
+    # Subtract the extra minutes, all seconds, and all microseconds
+    rounded_dt = dt - timedelta(minutes=minute_to_subtract, seconds=seconds, microseconds=microseconds)
     
     return rounded_dt
 
-with open("multi_scaler.pickle", "rb") as f:
-    multi_scaler = pkl.load(f)
-model = load_model("model.keras")
+with open('multi_scaler3.pkl','rb') as f:
+    multi_scaler=pkl.load(f)
+with open('encoder.pkl','rb') as f:
+    encoder=pkl.load(f)
+    
+model=load_model('model3.keras')
 
 async def publish_heartbeat(channel, sys_id=sys_id):
     while True:
@@ -56,22 +64,29 @@ async def trade_exec(model=model, multi_scaler=multi_scaler):
         if dt.hour < 13 or dt.hour > 20:
             print("Not trading hours")
             return
-        bars=await get_bars(assignments,rd(dt))
-        arr=await preprocess_bars(multi_scaler,bars,assignments)
-        prediction=await predict(model,arr)
-        targets=dict(zip(assignments,prediction))
-        try:
-            with ProcessPoolExecutor(max_workers=16) as executor:
-                tasks = [executor.submit(target_rebalance, PositionSide.LONG if pred == 0 else PositionSide.SHORT, symbol,{i.symbol:i for i in trading_client.get_all_positions()})
+        symbol_or_symbols=assignments
+        bars=await get_bars(symbol_or_symbols,rd(datetime.now(timezone.utc)))
+        
+            
+        arr=await preprocess_bars(multi_scaler,bars,symbol_or_symbols)
+        prediction=await predict(model,arr,encoder)
+        targets=dict(zip(symbol_or_symbols,prediction))
+        with ProcessPoolExecutor(max_workers=32) as executor:
+            tasks = [executor.submit(target_rebalance, PositionSide.LONG if pred == 1 else PositionSide.SHORT, symbol,{i.symbol:i for i in trading_client.get_all_positions()})
                     for symbol, pred in targets.items()]
-                trades = [task.result() for task in tasks]
-        except Exception as e:
-            print(e)
-        print(targets)
+            trades = [task.result() for task in tasks]
+            executor.shutdown(wait=True)
+
+        for trade in trades:
+            if trade:
+                trade=trade[0]
+                print(trade.symbol,trade.side,trade.qty,trade.time_in_force,trade.type) 
 
         with ProcessPoolExecutor(max_workers=16) as executor:
             tasks = [executor.submit(execute, trade) for trade in trades]
-            orders = [task.result() for task in tasks]
+            orders = [task.result(timeout=10) for task in tasks]
+            executor.shutdown(wait=True)
+
         return targets
     else:
         print ("No assignments")
@@ -93,6 +108,7 @@ async def trade_task():
             print("Trades:", trades)
             await trade_alert.publish(name="trades", data=json.dumps({sys_id: str(trades)}))
             print('DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE DONE ')
+
 
 
 async def main():

@@ -168,62 +168,62 @@ class Earnings:
 from sklearn.preprocessing import *
             
 import pandas as pd
-
 class MultiScalerOld:
-    
     def __init__(self, scaler_config=None):
         self.scalers = scaler_config
-    def is_fit_called(self,obj):
+        #print("Scaler configuration initialized.")
+
+    def is_fit_called(self, obj):
         return hasattr(obj, "n_features_in_")
 
     def fit(self, df):
         df = df.copy()
+        #print("Fitting scalers...")
         for scale_set in self.scalers:
             for scaler in scale_set['procedures']:
                 scaler.fit(df[scale_set['features']])
-                df[scale_set['features']]=scaler.transform(df[scale_set['features']])
+                df[scale_set['features']] = scaler.transform(df[scale_set['features']])
+                #print(f"Fitted and transformed features: {scale_set['features']} with {scaler}")
         return self
     
     def transform(self, df):
-        a=df.columns
         df = df.copy()
-        missing_cols = [col for scale_set in self.scalers for col in scale_set['features'] if col not in df.columns]
-
-        if missing_cols:
-            df_missing = pd.DataFrame(1, index=df.index, columns=missing_cols)
-            df = pd.concat([df, df_missing], axis=1)
+        #print("Transforming data...")
         for scale_set in self.scalers:
+            missing_cols = [col for col in scale_set['features'] if col not in df.columns]
+            if missing_cols:
+                #print(f"Missing columns added: {missing_cols}")
+                df_missing = pd.DataFrame(0, index=df.index, columns=missing_cols)
+                df = pd.concat([df, df_missing], axis=1)
+                
             for scaler in scale_set['procedures']:
-                if set(scale_set['features']).intersection(set(df.columns)):
-                    continue
                 df[scale_set['features']] = scaler.transform(df[scale_set['features']])
-
-        # Return only the original columns
-      #  original_cols = [col for scale_set in self.scalers for col in scale_set['features']]
-        return df.loc[:, a]
+                #print(f"Applied transformation for features: {scale_set['features']} using {scaler}")
+        return df
     
     def fit_transform(self, df):
         df = df.copy()
+        #print("Fit transforming data...")
         for scale_set in self.scalers:
             for scaler in scale_set['procedures']:
                 df[scale_set['features']] = scaler.fit_transform(df[scale_set['features']])
+                print(f"Fitted and transformed features: {scale_set['features']} with {scaler}")
         return df
 
     def inverse_transform(self, df):
-        a=df.columns
         df = df.copy()
-        missing_cols = [col for scale_set in self.scalers for col in scale_set['features'] if col not in df.columns]
-        if missing_cols:
-            df_missing = pd.DataFrame(df.mean().mean(), index=df.index, columns=missing_cols)
-            df = pd.concat([df, df_missing], axis=1)
+        #print("Inverse transforming data...")
         for scale_set in self.scalers:
-            # Reverse the order of procedures for inverse transformation
+            missing_cols = [col for col in scale_set['features'] if col not in df.columns]
+            if missing_cols:
+                df_missing = pd.DataFrame(df.mean().mean(), index=df.index, columns=missing_cols)
+                df = pd.concat([df, df_missing], axis=1)
+                #print(f"Missing columns filled for inverse transform: {missing_cols}")
+                
             for scaler in reversed(scale_set['procedures']):
                 df[scale_set['features']] = scaler.inverse_transform(df[scale_set['features']])
-        
-        # Return only the original columns
-       # original_cols = [col for scale_set in self.scalers for col in scale_set['features']]
-        return df.loc[:, a]
+                #print(f"Inverse transformed features: {scale_set['features']} using {scaler}")
+        return df
 
 import pandas as pd
 import numpy as np

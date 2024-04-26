@@ -12,6 +12,8 @@ client = StockHistoricalDataClient('PKG5MOE0VTWFQK9PBHPR', '6DS4Nx9rm8VhgekPWSFw
 import numpy as np
 from functools import lru_cache, wraps
 
+
+
 def cache_info_decorator(func):
     """Decorator to add caching info logging to functions."""
     @wraps(func)
@@ -43,19 +45,21 @@ def target_rebalance(side, symbol, pos):
         #shortable=get_asset_info(symbol).shortable
     #except Exception as e:
     #    print(e)
-    shortable=True
+    shortable=trading_client.get_asset(symbol_or_asset_id=symbol).shortable
 
     if symbol in list(pos.keys()):
         position=pos[symbol]
 
         if position.side == side:
-            print(f'{symbol}: Already in position')
+            #print(f'{symbol}: Already in position')
+            return []
         else:
-            print(f'''
-            found:{symbol}
-            {position.side}
-            {side}
-            ''')
+            pass
+            #print(f'''
+            #found:{symbol}
+            #{position.side}
+            #{side}
+            #''')
         if position.side != side:
             
             trade = MarketOrderRequest(
@@ -66,93 +70,171 @@ def target_rebalance(side, symbol, pos):
             )
             if shortable:
                 trades = [trade, trade]
-                print(f'TRADE {symbol} {side}')
+             #   print(f'TRADE {symbol} {side}')
 
             elif not shortable:
                 trades=[trade]
 
-                print(f'TRADE {symbol} {side}, not shortable')
+              #  print(f'TRADE {symbol} {side}, not shortable')
             return trades
         else:
             return []
             
     elif symbol not in list(pos.keys()):
-        print(f'{symbol}: Not Found opening position at 5k')
         #price = float(pos['symbol'].current_price)#
-        #price = client.get_stock_latest_quote(StockLatestQuoteRequest(symbol_or_symbols=symbol,feed='sip'))[symbol].ask_price
-        try:
-            price = get_latest_price(symbol)
-        except Exception as e1:
-            try:
-                price = float(pos['symbol'].current_price)
-                print(e1)
-            except Exception as e2:
-                price = client.get_stock_latest_quote(StockLatestQuoteRequest(symbol_or_symbols=symbol,feed='sip'))[symbol].ask_price
-                print(e1,e2)
+        price = client.get_stock_latest_quote(StockLatestQuoteRequest(symbol_or_symbols=symbol,feed='sip'))[symbol].ask_price
+        price=float(price)
+        qty = int(2500//price) if int(3000//2500)!=0 else 1
+     #   print(f'{symbol}: Not Found opening position at val: {price*qty} {qty} {price} {side}')
+
+
         trade = MarketOrderRequest(
                     symbol=symbol,
-                    qty = int(2000//price) if int(2000//price)!=0 else 1,
+                    qty = qty,
                     time_in_force=TimeInForce.DAY,
                     side=OrderSide.BUY if side == PositionSide.LONG else OrderSide.SELL
                 )
         if (side == PositionSide.LONG) or ((side == PositionSide.SHORT) and (shortable == True)):
 
             trades = [trade]
-            print(f'TRADE {symbol} {side}')
+           # print(f'TRADE {symbol} {side}')
             return trades
         else:
             return []
             
     else:
         return []
-def execute(trades):
+def executea(trades):
+
     sleep(.1)
     #if trading_client.get_clock().is_open == True:
     if False:
         print('Not open')
     else:     
+        
         for trade in trades:
             print(trade)
             submit_and_check_order(trade)
+
     return trades
-import concurrent.futures
+from datetime import datetime, timezone
+def executae(trades):
+    dt=datetime.now(timezone.utc)
+    if not (dt>dt.replace(hour=13,minute=30) and dt<dt.replace(hour=20) and dt.weekday()<5 and dt.weekday()>0):
+        print('Not trading hours')
+    else:     
+        for trade in trades:
+            print(trade)
+            max_tries=10
+            for i in range(max_tries):
+                try:
+                    submit_and_check_order(trade)
+                except Exception as e:
+                    print(f"Failed to execute trade: {trade.symbol} {trade.side} {trade.qty} {trade.time_in_force} {trade.type}: {e}")
+                    sleep(1)
+                    
+                    
+    return trades
+
  
 def submit_and_check_order(trade):
     symbol = trade.symbol
     try:
         activetrade = trading_client.submit_order(trade)
     except Exception as e:
-        print('failed',symbol,"reason:",e)
-        #if e has message 
-        if not hasattr(e, 'message'):
-            return
-        if 'rate' in e.message:
-            sleep(1)
-            activetrade = trading_client.submit_order(trade)
-        if 'insufficient' in e.message:
-            print('insufficient funds')
-            return
-    status = activetrade.status
-    checks=0
-    #while not (status == OrderStatus.FILLED or status == OrderStatus.ACCEPTED):
-    while status != OrderStatus.FILLED:
-        order = trading_client.get_order_by_id(activetrade.id)
-        status = order.status
-        checks=checks+1
-        #clear_output()
-        #print(checks)
-        sleep(1)
-        if order.status == OrderStatus.CANCELED:
-            print('failed',symbol)
-            return
-        print(checks,status,symbol)
+        print(f"Failed to get order: {e}")
+        sleep(1)    
+        activetrade = trading_client.submit_order(trade)
 
-        if checks == 15:
-            print('failed',symbol)
-            try:
-                trading_client.cancel_order_by_id(activetrade.id)
-            except Exception as e:
-                print(e)
+    for check in range(checks):
+        try:
+            order = trading_client.get_order_by_id(activetrade.id)
+        except Exception as e:
+            print(f"Failed to get order: {e}")
+            sleep(1)
+            order = trading_client.get_order_by_id(activetrade.id)
+        
+        if order.status == OrderStatus.CANCELED:
+            print('canceled',symbol)
             return
-    print(f"{trade} \n SUCCESS")
-    return trade
+        if order.status == OrderStatus.FILLED:
+            print(f"{trade} \n SUCCESS")
+            return trade
+        sleep(1)
+        print(f"Check {check+1}: {order.status} for {symbol}")
+    print('failed',symbol," ateempting to cancel")
+    try:
+        trading_client.cancel_order_by_id(activetrade.id)
+    except Exception as e:
+        print("Failed to cancel order: ", e)
+    return None
+
+
+from datetime import datetime, timezone
+import time
+
+class TradeStateMachine:
+    def __init__(self, trades, trading_client):
+        self.trades = trades
+        self.trading_client = trading_client
+
+    def run(self):
+        if not self.check_trading_hours():
+            print('Not trading hours')
+            return []
+
+        executed_trades = []
+        for trade in self.trades:
+            if self.process_trade(trade):
+                executed_trades.append(trade)
+            #time.sleep(1)
+        return executed_trades
+
+    def check_trading_hours(self):
+        dt = datetime.now(timezone.utc)
+        return dt.replace(hour=13, minute=30) <= dt < dt.replace(hour=20) and 0 < dt.weekday() < 5
+
+    def process_trade(self, trade):
+        max_tries = 10
+        for try_count in range(max_tries):
+            if self.submit_order(trade):
+                return self.check_order_status(trade)
+            #time.sleep(1)
+        return False
+
+    def submit_order(self, trade):
+        try:
+            self.activetrade = self.trading_client.submit_order(trade)
+            return True
+        except Exception as e:
+            print(f"Attempt to submit order failed: {e}")
+            return False
+
+    def check_order_status(self, trade):
+        checks = 5
+        for check_count in range(checks):
+            try:
+                order = self.trading_client.get_order_by_id(self.activetrade.id)
+                print(f"Check {check_count + 1}: {order.status} for {trade.symbol}")
+                if order.status == OrderStatus.CANCELED:
+                    print('Canceled', trade.symbol)
+                    return False
+                if order.status == OrderStatus.FILLED:
+                    print(f"{trade} \n SUCCESS")
+                    return True
+            except Exception as e:
+                print(f"Attempt to check order status failed: {e}")
+                if check_count == checks - 1:  # Last check attempt
+                    self.cancel_order(trade)
+            time.sleep(1)
+        return False
+
+    def cancel_order(self, trade):
+        try:
+            self.trading_client.cancel_order_by_id(self.activetrade.id)
+        except Exception as e:
+            print(f"Failed to cancel order: {e}")
+
+def execute(trades):
+    machine = TradeStateMachine(trades, trading_client)
+    return machine.run()

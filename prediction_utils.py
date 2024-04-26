@@ -7,11 +7,11 @@ from alpaca.trading.requests import *
 from alpaca.trading.enums import *
 trading_client = TradingClient('PKG5MOE0VTWFQK9PBHPR', '6DS4Nx9rm8VhgekPWSFwYuoFnpAUJTmfAAhmyJlD', paper=True)
 client = StockHistoricalDataClient('PKG5MOE0VTWFQK9PBHPR', '6DS4Nx9rm8VhgekPWSFwYuoFnpAUJTmfAAhmyJlD')
-
+import tensorflow as tf
 import numpy as np
 import pandas as pd
-async def get_bars(symbol_or_symbols,time):
-    start_time=time - timedelta(days=4)
+def get_bars(symbol_or_symbols,time):
+    start_time=time - timedelta(days=3)
     request_params = StockBarsRequest(
         symbol_or_symbols=symbol_or_symbols,
         timeframe=TimeFrame(15, TimeFrameUnit('Min')),
@@ -27,13 +27,23 @@ async def preprocess_bars(multi_scaler,bars,symbol_or_symbols):
     arrs={}
     for stock in symbol_or_symbols:
         df=bars.loc[stock].between_time('13:30','20:00')
-        print(df.index.max())
-        df=df.loc[:,['open','high','low','close']].diff().rolling(3).mean().dropna().tail(26)
+
+        df.loc[:,['open','high','low','close']]=df.loc[:,['open','high','low','close']].diff().rolling(3).mean()
+        df=df.drop(['vwap','trade_count'],axis=1)
+        df=df.dropna().tail(13)
         arr=multi_scaler.transform(df).values
         arrs[stock]=arr
-    return np.vstack(list(arrs.values())).reshape(-1,26,4)
+    return np.vstack(list(arrs.values())).reshape(-1,13,5)
 
-async def predict(model,x):
-    return model.predict(x,batch_size=1000).argmax(1)
+async def predict(model,x,encoder):
+    np.random.seed(1)
+    tf.random.set_seed(1)
+    predictions=model.predict(x,batch_size=1000)
+    predictions=encoder.inverse_transform(predictions).flatten()
+    print(predictions.flatten())
+    #percent long
+    print(f"{sum(predictions==1)/len(predictions)}% long")
+    return predictions
+
 
 
