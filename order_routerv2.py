@@ -38,19 +38,6 @@ class Trader:
         else:
             with open("assets.pkl", "rb") as f:
                 self.assets = pkl.load(f)
-
-    def get_asset(self,symbol):
-        try:
-            url = "https://paper-api.alpaca.markets/v2/assets"
-            headers = {
-                "accept": "application/json",
-                "APCA-API-KEY-ID": "PKG5MOE0VTWFQK9PBHPR",
-                "APCA-API-SECRET-KEY": "6DS4Nx9rm8VhgekPWSFwYuoFnpAUJTmfAAhmyJlD"
-            }
-            response = requests.get(url, headers=headers)
-            return response.json()
-        except Exception as e:
-            print(e)
             
     def get_bars(self,symbol_or_symbols,time):
         start_time=time - timedelta(days=3)
@@ -105,32 +92,112 @@ class Trader:
         predictions=self.encoder.inverse_transform(predictions).flatten()
         print(predictions.flatten())
         #percent long
-        print(f"{sum(predictions==1)/len(predictions)}% long")
+        print(f"{sum(predictions == 1)/len(predictions)}% long")
         return predictions
     @staticmethod
-    def target_rebalance(symbol,side,price,positions,assets,flip=None,longshort=True,close_to_reverse=True):
-        #shortable=assets[symbol].shortable
-        print(symbol)
+    def target_rebalance(symbol,side,price,positions,flip = None,longshort = True,close_to_reverse = True):
+        #shortable = assets[symbol].shortable
+        shortable = True
         if symbol in positions:
             position = positions[symbol]
         else: 
-            position=None
+            position = None
         if flip:
             side = PositionSide.LONG if side == 0 else PositionSide.SHORT
         else:
             side = PositionSide.LONG if side == 1 else PositionSide.SHORT
-    
-  
+            
+        if position:
+            #long==long
+            if position.side == side:
+                return []
+            #long==short
+            else:
+               # print(f'''{symbol}
+               #       {position.side}--->{side} 
+               #       qty: {position.qty} price:{price} 
+               #       shortable: {shortable}''')
+               # #sell to short
+                trade = MarketOrderRequest(
+                    symbol = symbol,
+                    qty = position.qty,
+                    time_in_force=TimeInForce.DAY,
+                    side = OrderSide.BUY if side == PositionSide.LONG else OrderSide.SELL
+                )
+                if close_to_reverse and shortable:
+                    return (position.asset_id,trade)
+                if shortable and not close_to_reverse:
+                    return (trade, trade)
+                if not shortable and side == PositionSide.LONG:
+                    return (trade,)
+                if not shortable and side == PositionSide.SHORT:
+                    return (position.asset_id,)
+                
+        else:
+            #open side
+            qty = int(2500/price)
+            trade = MarketOrderRequest(
+                symbol = symbol,
+                qty = qty,
+                time_in_force=TimeInForce.DAY,
+                side = OrderSide.BUY if side == PositionSide.LONG else OrderSide.SELL
+            )
+            
+            if (side == PositionSide.LONG) or ((side == PositionSide.SHORT) and (shortable == True)):
+                return (trade,)
+            else:
+                return (None,)        
             
             
-    def generate_orders(self,trades,prices,positions,flip=None,longshort=True):
-            
+    def generate_orders(self,trades,prices,positions,flip = None,longshort = True):
+        assets=self.assets.copy()
         with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
-            tasks = [pool.apply_async(self.target_rebalance, (symbol,trades[symbol],prices[symbol],positions,self.assets,flip,longshort)) for symbol in trades]
-            orders = [task.get() for task in tasks]
-        return orders
+            tasks = [pool.apply_async(self.target_rebalance, (symbol, trades[symbol], prices[symbol], positions, flip, longshort)) for symbol in trades]
+            orders=[task.get() for task in tasks]
 
-            
-    def execute(self,orders):
+        return orders
+    @staticmethod
+    def submit_and_monitor_orders(orders,trading_client):
+        trying=True
+        while trying and orders:
+            order=orders[0]
+            placed=False
+            if order:
+                if not placed:
+                    print(order)
+                    if isinstance(order,UUID) and not placed:
+                        order=trading_client.close_position(order)
+                    elif isinstance(order,MarketOrderRequest) and not placed:
+                        order=trading_client.submit_order(order)
+                    placed=True
+                if placed:
+                    for _ in range(5):
+                        try:
+                            order=trading_client.get_order(order.id)
+                            if order.status == OrderStatus.FILLED:
+                                orders.pop(0)
+                                break
+                        except:
+                            try:
+                                tried_cancel = True
+                                trading_client.cancel_order(order.id)
+                                cancel_success = True
+                            except:
+                                cancel_success = False
+                            
+                            pass
         pass
-    
+
+                        
+
+
+
+                
+    def execute(self,orders):
+        if not self.trading_client.get_clock().is_open:
+            with multiprocessing.Pool(multiprocessing.cpu_count()) as poolE:
+                tasks = [poolE.apply_async(self.submit_and_monitor_orders, args=(order,self.trading_client)) for order in orders]
+                [task.get() for task in tasks]
+        else:
+            print("Market closed")
+
