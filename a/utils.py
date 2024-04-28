@@ -1,7 +1,6 @@
 import requests
 import pandas as pd
-import simfin as sf
-from simfin.names import *
+
 
 class Earningsv2:
     def __init__(self, api_key, data_dir, stocks,config):

@@ -40,14 +40,15 @@ with open('encoder.pkl','rb') as f:
     encoder=pkl.load(f)
     
 model=load_model('model3.keras')
-
+np.random.seed(1)
+tf.random.set_seed(1)
 async def publish_heartbeat(channel, sys_id=sys_id):
     while True:
         await asyncio.sleep(2)
         await channel.publish(
             name="alive",
             data=json.dumps({sys_id: {"timestamp": datetime.now(timezone.utc).timestamp()}}),)
-        print("Published heartbeat")
+        #print("Published heartbeat")
             
 async def assignment_listener(message, sys_id=sys_id):
     global assignments
@@ -65,14 +66,14 @@ async def trade_exec(model=model, multi_scaler=multi_scaler):
             print("Not trading hours")
             return
         symbol_or_symbols=assignments
-        bars=await get_bars(symbol_or_symbols,rd(datetime.now(timezone.utc)))
+        bars=get_bars(symbol_or_symbols,rd(datetime.now(timezone.utc)))
         
             
         arr=await preprocess_bars(multi_scaler,bars,symbol_or_symbols)
         prediction=await predict(model,arr,encoder)
         targets=dict(zip(symbol_or_symbols,prediction))
         with ProcessPoolExecutor(max_workers=32) as executor:
-            tasks = [executor.submit(target_rebalance, PositionSide.LONG if pred == 1 else PositionSide.SHORT, symbol,{i.symbol:i for i in trading_client.get_all_positions()})
+            tasks = [executor.submit(target_rebalance, PositionSide.LONG if pred == 1 else PositionSide.SHORT, symbol,{i['symbol']:i for i in get_all_positions()})
                     for symbol, pred in targets.items()]
             trades = [task.result() for task in tasks]
             executor.shutdown(wait=True)

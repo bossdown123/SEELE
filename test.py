@@ -61,7 +61,7 @@ async def main():
     targets=dict(zip(symbol_or_symbols,prediction))
     print(targets)
     with ProcessPoolExecutor(max_workers=32) as executor:
-        tasks = [executor.submit(target_rebalance, PositionSide.LONG if pred == 1 else PositionSide.SHORT, symbol,{i.symbol:i for i in trading_client.get_all_positions()})
+        tasks = [executor.submit(target_rebalance, PositionSide.LONG if pred == 1 else PositionSide.SHORT, symbol,{i['symbol']:i for i in get_all_positions()})
                  for symbol, pred in targets.items()]
         trades = [task.result() for task in tasks]
         executor.shutdown(wait=True)

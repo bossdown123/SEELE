@@ -20,16 +20,23 @@ def get_bars(symbol_or_symbols,time):
         adjustment=Adjustment.ALL,
         feed='sip'
     )
+    
     return client.get_stock_bars(request_params).df
 
 
 async def preprocess_bars(multi_scaler,bars,symbol_or_symbols):
     arrs={}
+    start=bars.index.get_level_values(1).min()
+    end=bars.index.get_level_values(1).max()
     for stock in symbol_or_symbols:
         df=bars.loc[stock].between_time('13:30','20:00')
+        ldex=pd.date_range(start=start,end=end ,freq='15min').to_series().between_time('13:30', '20:00').index
+        ldex[pd.to_datetime(ldex.date).isin(pd.to_datetime(df.index.date).unique())]
 
-        df.loc[:,['open','high','low','close']]=df.loc[:,['open','high','low','close']].diff().rolling(3).mean()
+        df=df.drop_duplicates()
+        df.loc[:,['open','high','low','close']]=df.loc[:,['open','high','low','close']].diff().dropna().rolling(3,center=False).mean()
         df=df.drop(['vwap','trade_count'],axis=1)
+        df=df.reindex(ldex,method='ffill')
         df=df.dropna().tail(13)
         arr=multi_scaler.transform(df).values
         arrs[stock]=arr
