@@ -33,6 +33,8 @@ def rd(dt):
     rounded_dt = dt - timedelta(minutes=minute_to_subtract, seconds=seconds, microseconds=microseconds)
     
     return rounded_dt
+from order_routerv2 import *
+import multiprocessing
 
 with open('multi_scaler3.pkl','rb') as f:
     multi_scaler=pkl.load(f)
@@ -40,6 +42,8 @@ with open('encoder.pkl','rb') as f:
     encoder=pkl.load(f)
     
 model=load_model('model3.keras')
+trader=Trader(model=load_model('model3.keras'),multi_scaler=multi_scaler,encoder=encoder)
+
 np.random.seed(1)
 tf.random.set_seed(1)
 async def publish_heartbeat(channel, sys_id=sys_id):
@@ -65,30 +69,19 @@ async def trade_exec(model=model, multi_scaler=multi_scaler):
         if dt.hour < 13 or dt.hour > 20:
             print("Not trading hours")
             return
-        symbol_or_symbols=assignments
-        bars=get_bars(symbol_or_symbols,rd(datetime.now(timezone.utc)))
-        
-            
-        arr=await preprocess_bars(multi_scaler,bars,symbol_or_symbols)
-        prediction=await predict(model,arr,encoder)
-        targets=dict(zip(symbol_or_symbols,prediction))
-        with ProcessPoolExecutor(max_workers=32) as executor:
-            tasks = [executor.submit(target_rebalance, PositionSide.LONG if pred == 1 else PositionSide.SHORT, symbol,{i['symbol']:i for i in get_all_positions()})
-                    for symbol, pred in targets.items()]
-            trades = [task.result() for task in tasks]
-            executor.shutdown(wait=True)
+        stocks=assignments
+        positions={i.symbol:i for i in trader.trading_client.get_all_positions()}
+        bars=trader.get_bars(stocks,rd(dt))
+        arrs=trader.preprocess_bars_v2(bars,stocks)
+        predictions=trader.predict(arrs)
+        trades=dict(zip(stocks,predictions))
+        prices=bars.groupby('symbol').last()['close'].to_dict()
+        orders=trader.generate_orders(trades,prices,positions)
+        trader.trading_client.cancel_orders()
+        trader.execute(orders[:])
 
-        for trade in trades:
-            if trade:
-                trade=trade[0]
-                print(trade.symbol,trade.side,trade.qty,trade.time_in_force,trade.type) 
 
-        with ProcessPoolExecutor(max_workers=16) as executor:
-            tasks = [executor.submit(execute, trade) for trade in trades]
-            orders = [task.result(timeout=10) for task in tasks]
-            executor.shutdown(wait=True)
-
-        return targets
+        return trades
     else:
         print ("No assignments")
 # await trade_alert.publish(name='trades', data=json.dumps({sys_id:targets}))
