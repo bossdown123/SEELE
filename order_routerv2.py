@@ -210,7 +210,7 @@ class Trader:
 
                 
     def execute(self,orders):
-        if not self.trading_client.get_clock().is_open:
+        if self.trading_client.get_clock().is_open:
             with multiprocessing.Pool(multiprocessing.cpu_count()) as poolE:
             #with multiprocessing.Pool(2) as poolE:
     
