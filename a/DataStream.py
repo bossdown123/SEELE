@@ -8,13 +8,15 @@ from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import OrderRequest,MarketOrderRequest 
 from alpaca.trading.enums import OrderSide, TimeInForce, OrderType,PositionSide,OrderStatus
 from supabase import create_client
+import os
 from supabase.client import Client
-url: str = "https://yygimsahwbrurnvyfmul.supabase.co"
-key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5Z2ltc2Fod2JydXJudnlmbXVsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcxMDY4ODI2OCwiZXhwIjoyMDI2MjY0MjY4fQ.A0EiE0m1Ze_bYOz-8LBymdBwHvQwMr3n0wO6ajvJtzw"
+
+url: str = os.getenv("SUPABASE_URL")
+key: str = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
-trading_client = TradingClient('PKODZGQ3BIWGQJ6A3HJ4', 'WRCojP9T9ZnV2KZeru9GRbXb41zu7bj2GjRC17XJ', paper=True)
-client = StockHistoricalDataClient('PKODZGQ3BIWGQJ6A3HJ4', 'WRCojP9T9ZnV2KZeru9GRbXb41zu7bj2GjRC17XJ')
+trading_client = TradingClient(os.getenv("APCA_API_KEY_ID"), os.getenv("APCA_API_SECRET_KEY"), paper=True)
+client = StockHistoricalDataClient(os.getenv("APCA_API_KEY_ID"), os.getenv("APCA_API_SECRET_KEY"))
 
 import asyncio
 import websockets
@@ -34,8 +36,8 @@ async def connect_websocket():
 async def authenticate(websocket):
     auth_data = {
         "action": "auth",
-        "key": "PKODZGQ3BIWGQJ6A3HJ4",
-        "secret": "WRCojP9T9ZnV2KZeru9GRbXb41zu7bj2GjRC17XJ"
+        "key": os.getenv("APCA_API_KEY_ID"),
+        "secret": os.getenv("APCA_API_SECRET_KEY")
     }
     await websocket.send(json.dumps(auth_data))
     # Wait for authentication response

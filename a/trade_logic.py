@@ -9,8 +9,8 @@ from alpaca.data.enums import Adjustment
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import OrderRequest,MarketOrderRequest 
 from alpaca.trading.enums import OrderSide, TimeInForce, OrderType,PositionSide,OrderStatus
-trading_client = TradingClient('PKODZGQ3BIWGQJ6A3HJ4', 'WRCojP9T9ZnV2KZeru9GRbXb41zu7bj2GjRC17XJ', paper=True)
-client = StockHistoricalDataClient('PKODZGQ3BIWGQJ6A3HJ4', 'WRCojP9T9ZnV2KZeru9GRbXb41zu7bj2GjRC17XJ')
+trading_client = TradingClient(os.getenv('APCA_API_KEY_ID'), os.getenv('APCA_API_SECRET_KEY'), paper=True)
+client = StockHistoricalDataClient(os.getenv('APCA_API_KEY_ID'), os.getenv('APCA_API_SECRET_KEY'))
 import numpy as np
 
 
@@ -92,6 +92,7 @@ def submit_and_check_orderA(trade):
         
         
 import asyncio 
+import os
         
 async def execute(trades, trading_client):
     clock = trading_client.get_clock()
@@ -109,7 +110,7 @@ async def submit_and_check_order(trade, trading_client):
     status = activetrade['status']
     checks = 0
 
-    while status != 'FILLED':  # Assuming 'FILLED' is the status you check for
+    while status != 'FILLED':  # Assuming 'FILLED' is the status 
         order = trading_client.get_order_by_id(activetrade['id'])
         status = order['status']
         checks += 1

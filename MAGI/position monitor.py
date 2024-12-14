@@ -9,12 +9,16 @@ from alpaca.data.live.stock import StockDataStream
 from datetime import *
 
 import asyncio
+import os
 
 async def handle_bars(message):
     print(message)
 
    
-stock_stream = StockDataStream('PKG5MOE0VTWFQK9PBHPR', '6DS4Nx9rm8VhgekPWSFwYuoFnpAUJTmfAAhmyJlD', feed=DataFeed.SIP)
+API_KEY = os.getenv('ALPACA_API_KEY')
+SECRET_KEY = os.getenv('ALPACA_SECRET_KEY')
+
+stock_stream = StockDataStream(API_KEY, SECRET_KEY, feed=DataFeed.SIP)
     
 stock_stream.subscribe_bars(handler=handle_bars, symbols=['AAPL', 'MSFT'])
     

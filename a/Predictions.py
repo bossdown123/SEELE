@@ -1,13 +1,15 @@
-
 from realtime.connection import Socket
 from datetime import *
-SUPABASE_ID = "yygimsahwbrurnvyfmul"
-API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5Z2ltc2Fod2JydXJudnlmbXVsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcxMDY4ODI2OCwiZXhwIjoyMDI2MjY0MjY4fQ.A0EiE0m1Ze_bYOz-8LBymdBwHvQwMr3n0wO6ajvJtzw"
+import os
+
+SUPABASE_ID = os.getenv("SUPABASE_ID")
+API_KEY = os.getenv("SUPABASE_API_KEY")
 from supabase import create_client
 from supabase import Client
 from utils import*
-url: str = 'https://yygimsahwbrurnvyfmul.supabase.co'
-key: str = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5Z2ltc2Fod2JydXJudnlmbXVsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcxMDY4ODI2OCwiZXhwIjoyMDI2MjY0MjY4fQ.A0EiE0m1Ze_bYOz-8LBymdBwHvQwMr3n0wO6ajvJtzw'
+
+url: str = f'https://{SUPABASE_ID}.supabase.co'
+key: str = API_KEY
 supabase: Client = create_client(url, key)
 supabase.options.postgrest_client_timeout = 100000
 
@@ -19,8 +21,8 @@ from alpaca.data.enums import Adjustment
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import OrderRequest,MarketOrderRequest 
 from alpaca.trading.enums import OrderSide, TimeInForce, OrderType,PositionSide,OrderStatus
-trading_client = TradingClient('PKODZGQ3BIWGQJ6A3HJ4', 'WRCojP9T9ZnV2KZeru9GRbXb41zu7bj2GjRC17XJ', paper=True)
-client = StockHistoricalDataClient('PKODZGQ3BIWGQJ6A3HJ4', 'WRCojP9T9ZnV2KZeru9GRbXb41zu7bj2GjRC17XJ')
+trading_client = TradingClient(os.getenv('APCA_API_KEY_ID'), os.getenv('APCA_API_SECRET_KEY'), paper=True)
+client = StockHistoricalDataClient(os.getenv('APCA_API_KEY_ID'), os.getenv('APCA_API_SECRET_KEY'))
 
 
 import tensorflow as tf

@@ -5,14 +5,18 @@ from alpaca.data.enums import Adjustment
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import OrderRequest,MarketOrderRequest 
 from alpaca.trading.enums import OrderSide, TimeInForce, OrderType,PositionSide,OrderStatus
-trading_client = TradingClient('PKG5MOE0VTWFQK9PBHPR', '6DS4Nx9rm8VhgekPWSFwYuoFnpAUJTmfAAhmyJlD', paper=True)
-client = StockHistoricalDataClient('PKG5MOE0VTWFQK9PBHPR', '6DS4Nx9rm8VhgekPWSFwYuoFnpAUJTmfAAhmyJlD')
+API_KEY = os.getenv('APCA_API_KEY_ID')
+API_SECRET = os.getenv('APCA_API_SECRET_KEY')
+
+trading_client = TradingClient(API_KEY, API_SECRET, paper=True)
+client = StockHistoricalDataClient(API_KEY, API_SECRET)
 
 import asyncio
 import pandas as pd
 import json
 from ably import AblyRealtime
 import random
+import os
 sys_id = str(random.randint(0, 10000000000))
 TARGET_VALUE_PER_STOCK = 2500
 

@@ -32,9 +32,9 @@ async def heartbeat_listener(message):
 
 async def main():
 
-    # Create a client using an Abl1y API key
-    client = AblyRealtime('rFzlEA.aAHNZw:3ybEePEcrI20nqAWmSyvQdjANv2XWGiOMfW05c4T_kw')
-    client.realtime_request_timeout = 2000000000
+    # Create a client using an Ably API key from environment variable
+        ably_api_key = os.getenv('ABLY_API_KEY', 'default_key')
+        client = AblyRealtime(ably_api_key) client.realtime_request_timeout = 2000000000
 
     # Subscribe to connection state changes
     client.connection.on('connected', lambda state_change: print('Connected to Ably'))

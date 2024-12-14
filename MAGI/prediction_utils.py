@@ -5,11 +5,12 @@ from alpaca.data.enums import *
 from alpaca.trading.client import *
 from alpaca.trading.requests import * 
 from alpaca.trading.enums import *
-trading_client = TradingClient('PKG5MOE0VTWFQK9PBHPR', '6DS4Nx9rm8VhgekPWSFwYuoFnpAUJTmfAAhmyJlD', paper=True)
-client = StockHistoricalDataClient('PKG5MOE0VTWFQK9PBHPR', '6DS4Nx9rm8VhgekPWSFwYuoFnpAUJTmfAAhmyJlD')
+trading_client = TradingClient(os.getenv('APCA_API_KEY_ID'), os.getenv('APCA_API_SECRET_KEY'), paper=True)
+client = StockHistoricalDataClient(os.getenv('APCA_API_KEY_ID'), os.getenv('APCA_API_SECRET_KEY'))
 import tensorflow as tf
 import numpy as np
 import pandas as pd
+import os
 def get_bars(symbol_or_symbols,time):
     start_time=time - timedelta(days=3)
     request_params = StockBarsRequest(

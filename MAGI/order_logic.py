@@ -6,23 +6,22 @@ from alpaca.data.timeframe import TimeFrame,TimeFrameUnit
 from alpaca.data.enums import Adjustment
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import OrderRequest,MarketOrderRequest 
-from alpaca.trading.enums import OrderSide, TimeInForce, OrderType,PositionSide,OrderStatus
-trading_client = TradingClient('PKG5MOE0VTWFQK9PBHPR', '6DS4Nx9rm8VhgekPWSFwYuoFnpAUJTmfAAhmyJlD', paper=True)
-client = StockHistoricalDataClient('PKG5MOE0VTWFQK9PBHPR', '6DS4Nx9rm8VhgekPWSFwYuoFnpAUJTmfAAhmyJlD')
+from alpaca.trading.enums import OrderSide, TimeInForce, OrderType, PositionSide, OrderStatus
+import os
+
+trading_client = TradingClient(os.getenv('APCA_API_KEY_ID'), os.getenv('APCA_API_SECRET_KEY'), paper=True)
+client = StockHistoricalDataClient(os.getenv('APCA_API_KEY_ID'), os.getenv('APCA_API_SECRET_KEY'))
 import numpy as np
 from functools import lru_cache, wraps
-
-
 import requests
-
 
 def get_all_positions():
     url = "https://paper-api.alpaca.markets/v2/positions"
 
     headers = {
-    "accept": "application/json",
-    "APCA-API-KEY-ID": "PKG5MOE0VTWFQK9PBHPR",
-    "APCA-API-SECRET-KEY": "6DS4Nx9rm8VhgekPWSFwYuoFnpAUJTmfAAhmyJlD"
+        "accept": "application/json",
+        "APCA-API-KEY-ID": os.getenv('APCA_API_KEY_ID'),
+        "APCA-API-SECRET-KEY": os.getenv('APCA_API_SECRET_KEY')
     }
 
     response = requests.get(url, headers=headers)
